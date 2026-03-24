@@ -46,8 +46,8 @@ def init_driver(browser_type="safari", headless=True):
             driver = webdriver.Chrome(options=chrome_options)
 
         # 统一设置超时
-        driver.set_page_load_timeout(30)
-        driver.implicitly_wait(10)
+        driver.set_page_load_timeout(3)
+        driver.implicitly_wait(2)
     return driver
 
 
@@ -67,10 +67,10 @@ def crawl_fund_daily_return(fund_code, past_days=30):
     try:
         url = f"https://fundf10.eastmoney.com/jjjz_{fund_code}.html"
         driver.get(url)
-        driver.implicitly_wait(5)
+        driver.implicitly_wait(1)
 
         # 等待表格加载
-        table = WebDriverWait(driver, 10).until(
+        table = WebDriverWait(driver, 2).until(
             EC.presence_of_element_located((By.CLASS_NAME, "lsjz"))
         )
 

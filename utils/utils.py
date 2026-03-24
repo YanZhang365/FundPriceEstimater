@@ -33,7 +33,7 @@ def generate_fund_html(raw_data):
     for group_name,fund_list in raw_data.items():
         html_body += f"<div class='group-title'>{group_name}</div>"
         html_body += "<div class='table-wrap'><table>"
-        html_body += "<tr><th>基金代码</th><th>基金名称</th><th>最新净值</th><th>涨跌幅</th><th>更新时间</th></tr>"
+        html_body += "<tr><th>基金代码</th><th>基金名称</th><th>上个交易日收盘净值</th><th>涨跌幅</th><th>更新时间</th></tr>"
 
         for fund in fund_list:
             code = fund.get('code', '--')
@@ -110,7 +110,7 @@ warnings.filterwarnings('ignore', category=UserWarning, module='matplotlib')
 
 def generate_fund_image(raw_data):
     # ========== 1. 整理数据：按分组拆分，添加分组行 ==========
-    col_labels = ["代码", "基金名称", "涨跌幅", "与30天高点%差", "与30天低点%差", "连续趋势", "最新净值"]
+    col_labels = ["代码", "基金名称", "涨跌幅", "与30天高点%差", "与30天低点%差", "连续趋势", "上个交易日收盘净值"]
     n_cols = len(col_labels)
     table_data = [col_labels]  # 表头行
     total_data_rows = 0  # 纯数据行数
@@ -233,11 +233,11 @@ def generate_fund_image(raw_data):
 
     # 跨平台打开图片
     if platform.system() == "Windows":
-        os.startfile("../output_png/fund_data.png")
+        os.startfile(f"../output_png/fund_data_{now.strftime("%Y-%m-%d")}.png")
     elif platform.system() == "Darwin":  # macOS
-        os.system(f"open fund_data.png")
+        os.system(f"open fund_data_{now.strftime("%Y-%m-%d")}.png")
     else:  # Linux
-        os.system(f"xdg-open fund_data.png")
+        os.system(f"xdg-open fund_data_{now.strftime("%Y-%m-%d")}.png")
 
     print(f"✅ 图片生成完成（{total_data_rows}条数据）：fund_data.png")
 

@@ -7,84 +7,81 @@ import time
 import numpy as np
 import config  # 导入配置
 from get_etf import get_etf_fund_data
-from get_otc import get_today_fund_data
 from holdings.load_holdings import load_all_fund_holdings
 from crawler_otc import init_driver, crawl_fund_daily_return, close_driver
+from get_fund_realtime import get_fund_realtime_holdings
 
 def crawl_otc_funds():
-    """抓取所有OTC基金数据"""
+    """抓取所有 OTC 基金数据"""
     otc_results = {}
-    init_driver(browser_type=config.BROWSER_TYPE, headless=config.HEADLESS_MODE)
+    driver = init_driver(browser_type=config.BROWSER_TYPE, headless=config.HEADLESS_MODE)
 
-    all_otc_results = get_today_fund_data()
-    all_otc_results_dict = {item["code"]: item for item in all_otc_results}
-    print(all_otc_results)
     all_fund_holdings = load_all_fund_holdings('holdings/data')
     all_fund_holdings_dict = {item["code"]: item for item in all_fund_holdings}
     for group_name, fund_codes in config.OTC_FUND_CODES.items():
         otc_results[group_name] = []
 
         for code in fund_codes:
-            fund_holdings = all_fund_holdings_dict[code]
-            fund_history = crawl_fund_daily_return(code, config.OTC_CRAWL_DAYS)
-            fund_today = all_otc_results_dict.get(code, {})
-            if not fund_today:
-                print(f"警告：基金 {code} 的数据不存在")
-                continue  # 或者跳过这个基金
-            otc_res = {**(fund_today or {}), **(fund_holdings or {}), **(fund_history or {})}
+            try:
+                # ① 获取实时持仓数据（每个基金单独调用）
+                fund_realtime = get_fund_realtime_holdings(code, driver)
+                # ② 获取历史净值数据
+                fund_history = crawl_fund_daily_return(code, config.OTC_CRAWL_DAYS)
+                # ③ 加载本地持仓配置
+                fund_holdings = all_fund_holdings_dict.get(code, {})
+                if not fund_realtime:
+                    print(f"⚠️  基金 {code} 未获取到实时数据")
+                    # 降级方案：仅保留基本信息
+                    otc_res = {
+                        "code": code,
+                        "name": fund_holdings.get("name", f"基金{code}"),
+                        "实时数据状态": "获取失败"
+                    }
+                else:
+                    otc_res = {
+                        **fund_holdings,
+                        **fund_realtime
+                    }
+                    otc_res.update({
+                        "net":  fund_realtime.get("net"), 
+                        "ratio": fund_realtime.get("est_increase_pct")
+                    })
+                if fund_realtime:
+                    fund_history = crawl_fund_daily_return(code, 30)
+                    if fund_history:
+                        continuous_trend = fund_history.get("trend", "未获取到历史数据")
+                        otc_res["trend"] = continuous_trend
+                                                otc_res.update({
+                            "30天最高价日期": fund_history['最高价日期'],
+                            "与30天高点%差": fund_history['相对最高价涨跌'],
+                            "30天最低价日期": fund_history['最低价日期'],
+                            "与30天低点%差": fund_history['相对最低价涨跌']
+                        })
+                        print(f"✅ {fund_realtime['fund_name'].ljust(25)} | 持仓{fund_realtime['total_holding_pct']}% | 估算涨跌：{fund_realtime['est_increase_pct']}% | {continuous_trend}")
+                    else:
+                        print(f"✅ {fund_realtime['fund_name'].ljust(25)} | 持仓{fund_realtime['total_holding_pct']}% | 估算涨跌：{fund_realtime['est_increase_pct']}% | 无历史数据")
+                else:
+                    print(f"⚠️  基金 {code} 实时数据缺失（保留基本信息）")
 
-            continuous_trend = "未获取到历史数据"
-            if fund_history:
-                continuous_trend = fund_history.get("连续趋势", continuous_trend)
-                otc_res["连续趋势"] = continuous_trend
-
-            # if fund_holdings and fund_holdings.get('total_holding_pct', 0) > 0:
-            #     est_fund_increase_pct = 0;
-            #     # for holding in fund_holdings.get('holdings', []):
-            #     #     stock_pct_chg = next((stock for stock in realtime_stock_price if stock["code"] == code), 0)
-            #     #     est_fund_increase_pct += holding['ratio'] * stock_pct_chg
-            #     est_change_pct = np.round(est_fund_increase_pct / fund_holdings['total_holding_pct'], 3)
-            #     name = fund_holdings['name']
-            #     oct_res.update({
-            #         "name": name,
-            #         "持仓比例(%)": fund_holdings['total_holding_pct'],
-            #         "est_change_pct": est_change_pct
-            #     })
-            # else:
-            #     name = fund_holdings.get('name', f"基金{code}")
-            #     oct_res.update({
-            #         "name": name,
-            #         "持仓比例(%)": 0,
-            #         "est_change_pct": None,
-            #         "持仓状态": "持仓比例为0，或 未获取到实时数据"
-            #     })
-            #     print(f"基金 {code} 持仓比例为0，或 未获取到实时数据  {continuous_trend}")
-
-            if fund_history:
-                otc_res.update({
-                    "30天最高价日期": fund_history['最高价日期'],
-                    "与天高点%差": fund_history['相对最高价涨跌'],
-                    "30天最低价日期": fund_history['最低价日期'],
-                    "与30天低点%差": fund_history['相对最低价涨跌']
-                })
-            else:
-                otc_res["30天高低点状态"] = 'no_history_info'
-                print(f"基金 {code} 未获取到历史数据")
-
-            otc_results[group_name].append(otc_res)
-            time.sleep(3)
+                otc_results[group_name].append(otc_res)
+                time.sleep(0.5)
+                
+            except Exception as e:
+                print(f"❌ 基金 {code} 处理异常：{e}")
+                continue
 
     close_driver()
     return otc_results
 
 def run_fund_crawl(trigger_type="定时触发"):
-    """核心执行函数：抓取ETF+OTC数据并汇总"""
+    """核心执行函数：抓取 ETF+OTC 数据并汇总"""
     exec_start_time = datetime.now()
     print(f"\n===== [{trigger_type}] 开始执行基金数据抓取 at {exec_start_time.strftime('%Y-%m-%d %H:%M:%S')} =====")
 
     try:
+        print(f"\n===== ETF =====")
         etf_results = get_etf_fund_data(config.ETF_FUND_CODES)
-        print(f"\n===== [{trigger_type}] 开始执行场外基金数据抓取 at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} =====")
+        print(f"\n===== 场外基金 =====")
         otc_results = crawl_otc_funds()
 
         exec_complete_time = datetime.now()
@@ -96,10 +93,8 @@ def run_fund_crawl(trigger_type="定时触发"):
             "total_otc_count": sum([len(codes) for codes in config.OTC_FUND_CODES.values()])
         }
         combined_result = {**{"ETF":etf_results},**otc_results}
-
         print(f"\n===== [{trigger_type}] 抓取完成汇总 =====")
-        print(f"执行结束时间：{exec_complete_time.strftime('%Y-%m-%d %H:%M:%S')}")
-        print(f"执行时长：{all_fund_data['exec_time']} s")
+        print(f"执行结束时间：{exec_complete_time.strftime('%Y-%m-%d %H:%M:%S')}, 执行时长：{all_fund_data['exec_time']} s")
 
         return combined_result
 

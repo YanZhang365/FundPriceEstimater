@@ -7,8 +7,8 @@ import signal
 import config  # 导入配置
 import fund_core  # 导入核心逻辑
 from utils import schedule_manager, utils
-
-
+from datetime import datetime, timedelta
+from utils.send_wechat import send_image_to_wechat
 # ==================== 信号捕获（Control+C强制退出） ====================
 def signal_handler(signal_num, frame):
     """捕获Control+C，调用退出逻辑"""
@@ -41,9 +41,9 @@ if __name__ == "__main__":
     if args.mode == "once":
         # 单次执行模式
         result = fund_core.run_fund_crawl(trigger_type="手动单次触发")
-
+        now = datetime.now()
         push_content = utils.generate_fund_image(result)
-        # send_wechat.send_image_to_wechat('fund_data.png')
+        send_image_to_wechat(f'fund_data_{now.strftime("%Y-%m-%d")}.png')
         print(f"\n手动单次执行完成")
     else:
         # 纯自动定时模式
