@@ -51,7 +51,7 @@ def crawl_otc_funds():
                     if fund_history:
                         continuous_trend = fund_history.get("trend", "未获取到历史数据")
                         otc_res["trend"] = continuous_trend
-                                                otc_res.update({
+                        otc_res.update({
                             "30天最高价日期": fund_history['最高价日期'],
                             "与30天高点%差": fund_history['相对最高价涨跌'],
                             "30天最低价日期": fund_history['最低价日期'],
