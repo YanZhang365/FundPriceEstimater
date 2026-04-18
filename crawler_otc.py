@@ -46,8 +46,8 @@ def init_driver(browser_type="safari", headless=True):
             driver = webdriver.Chrome(options=chrome_options)
 
         # 统一设置超时
-        driver.set_page_load_timeout(3)
-        driver.implicitly_wait(2)
+        driver.set_page_load_timeout(4)
+        driver.implicitly_wait(3)
     return driver
 
 
