@@ -2,6 +2,10 @@ import json
 import os
 from datetime import datetime
 import time
+import sys
+import os.path
+# 添加上级目录到路径，以便导入 config
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config  # 导入配置
 from get_holdings import get_fund_holdings
 
@@ -19,7 +23,6 @@ def save_fund_holdings(holdings_data, output_dir="data"):
     os.makedirs(output_dir, exist_ok=True)
 
     filename = os.path.join(output_dir, f"holdings_{quarter}.json")
-
     try:
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(holdings_data, f, ensure_ascii=False, indent=2)

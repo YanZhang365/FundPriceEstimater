@@ -26,7 +26,7 @@ def generate_fund_html(raw_data):
         </style>
     </head>
     <body>
-        <h3 style="font-size: 16px; color: #2d3748; margin: 0 0 10px 0;">📊 基金数据汇总</h3>
+        <h3 style="font-size: 16px; color: #2d3748; margin: 0 0 10px 0;">📊 基金数据</h3>
     """
 
     html_body = ""
@@ -108,16 +108,21 @@ plt.rcParams['axes.unicode_minus'] = False  # 解决负号乱码
 warnings.filterwarnings('ignore', category=UserWarning, module='matplotlib')
 
 
-def generate_fund_image(raw_data):
+def generate_fund_image(fund_data, market_data=None):
+    """
+    生成基金图片
+    :param fund_data: 基金数据
+    :param market_data: 市场数据，包含成交量、上证当前价和涨跌幅
+    """
     # ========== 1. 整理数据：按分组拆分，添加分组行 ==========
     col_labels = ["代码", "基金名称", "涨跌幅", "与30天高点%差", "与30天低点%差", "连续趋势", "上个交易日收盘净值"]
     n_cols = len(col_labels)
     table_data = [col_labels]  # 表头行
     total_data_rows = 0  # 纯数据行数
-    group_row_count = len(raw_data)  # 分组行数量
+    group_row_count = len(fund_data)  # 分组行数量
 
     # 遍历分组，先加分组行，再加数据行
-    for group_name, fund_list in raw_data.items():
+    for group_name, fund_list in fund_data.items():
         # 分组行：第二列显示group_name，其他列空字符串
         group_row = ["", group_name, "", "", "", "", ""]
         table_data.append(group_row)
@@ -182,7 +187,7 @@ def generate_fund_image(raw_data):
 
     # 2. 分组行样式（第二列显示分组名，背景色突出）
     row_idx = 1  # 表头是0行，第一个分组行是1行
-    for group_name, fund_list in raw_data.items():
+    for group_name, fund_list in fund_data.items():
         # 分组行整行设置背景色
         for col in range(n_cols):
             cell = table[(row_idx, col)]
@@ -225,7 +230,13 @@ def generate_fund_image(raw_data):
 
     # ========== 6. 保存图片 ==========
     today = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    plt.title(f"{today} 基金数据汇总", fontsize=12, pad=10, fontweight='bold')
+    
+    # 添加市场数据到标题
+    title = f"{today} 基金数据"
+    if market_data:        
+        title = f"{title}\n 上证：{market_data.get('sh_current_price')} | {market_data.get('sh_change_pct')} | 上深成交量：{market_data.get('volume')}亿"
+    
+    plt.title(title, fontsize=12, pad=10, fontweight='bold')
     now = datetime.now()
     filename = f"fund_data_{now.strftime("%Y-%m-%d")}.png"
     plt.savefig(filename, dpi=200, bbox_inches='tight')

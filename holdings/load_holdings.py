@@ -36,12 +36,12 @@ def load_all_fund_holdings(data_dir="data"):
         return None
 
 
-def find_fund_holdings_by_code(fund_code):
-    data = load_fund_holdings()
+def find_fund_holdings_by_code(fund_code, data_dir="data"):
+    data = load_all_fund_holdings(data_dir)
     if data:
         for fund in data:
             # 查找特定基金
-            if fund.get("fund_code") == fund_code:
+            if fund.get("code") == fund_code:  # 修复：使用 "code" 而不是 "fund_code"
                 print(f"\n🔍 找到了目标基金: {fund_code+' '+fund['name']}")
                 return fund
         return None

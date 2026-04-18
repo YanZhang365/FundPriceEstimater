@@ -1,4 +1,3 @@
-
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
@@ -36,7 +35,7 @@ def get_fund_holdings(driver, fund_code):
             print(f"[{fund_code}] 获取基金名称超时，可能页面加载失败，跳过")
             return {
                 "code": fund_code,
-                "name": fund_name | '',
+                "name": fund_name if 'fund_name' in locals() else '',  # 修复：如果 fund_name 未定义则使用空字符串
                 "holdings": [],
                 "total_holding_pct": 0
             }
@@ -104,6 +103,6 @@ def get_fund_holdings(driver, fund_code):
         return {
             "code": fund_code,
             "name": '',
-            "holdings": {},
+            "holdings": [],
             "total_holding_pct": 0
         }
