@@ -1,7 +1,35 @@
 import os
 import platform
-import matplotlib.pyplot as plt
-import pandas as pd
+import sys
+
+# 尝试导入matplotlib和pandas，如果失败则动态添加路径
+required_modules = ['matplotlib.pyplot', 'pandas']
+
+for module_name in required_modules:
+    try:
+        if module_name == 'matplotlib.pyplot':
+            import matplotlib.pyplot as plt
+        elif module_name == 'pandas':
+            import pandas as pd
+    except ImportError:
+        # 如果导入失败，尝试添加常用路径
+        common_paths = [
+            f"/usr/local/lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages",
+            f"/opt/homebrew/lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages",
+            f"/usr/lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages",
+            f"/Library/Frameworks/Python.framework/Versions/{sys.version_info.major}.{sys.version_info.minor}/lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages"
+        ]
+        
+        for path in common_paths:
+            if os.path.exists(path) and path not in sys.path:
+                sys.path.append(path)
+        
+        # 再次尝试导入
+        if module_name == 'matplotlib.pyplot':
+            import matplotlib.pyplot as plt
+        elif module_name == 'pandas':
+            import pandas as pd
+
 import warnings
 import subprocess
 from datetime import datetime, timedelta
@@ -102,7 +130,11 @@ def save_and_open_html(html_content, file_name="fund_report.html"):
 
 ##############################################################
 # 设置中文字体（避免乱码）
-plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
+try:
+    plt.rcParams['font.sans-serif'] = ['Arial Unicode MS', 'SimHei', 'DejaVu Sans']
+except:
+    # 如果设置字体失败，跳过（可能在服务器环境中）
+    pass
 plt.rcParams['axes.unicode_minus'] = False  # 解决负号乱码
 # 禁用Matplotlib的字体缺失警告（只针对特殊符号如📊）
 warnings.filterwarnings('ignore', category=UserWarning, module='matplotlib')
@@ -234,23 +266,20 @@ def generate_fund_image(fund_data, market_data=None):
     # 添加市场数据到标题
     title = f"{today} 基金数据"
     if market_data:        
-        title = f"{title}\n 上证：{market_data.get('sh_current_price')} | {market_data.get('sh_change_pct')} | 上深成交量：{market_data.get('volume')}亿"
+        volume_display = market_data.get('volume', 0)
+        # 确保成交量正常显示
+        if volume_display is None:
+            volume_display = 0
+        title = f"{title}\n 上证：{market_data.get('sh_current_price', 'N/A')} | {market_data.get('sh_change_pct', '--')} | 上深成交量：{volume_display}万亿"
     
     plt.title(title, fontsize=12, pad=10, fontweight='bold')
     now = datetime.now()
-    filename = f"fund_data_{now.strftime("%Y-%m-%d")}.png"
+    filename = f"fund_data_{now.strftime('%Y-%m-%d')}.png"
     plt.savefig(filename, dpi=200, bbox_inches='tight')
     plt.close()
 
-    # 跨平台打开图片
-    if platform.system() == "Windows":
-        os.startfile(f"../output_png/fund_data_{now.strftime("%Y-%m-%d")}.png")
-    elif platform.system() == "Darwin":  # macOS
-        os.system(f"open fund_data_{now.strftime("%Y-%m-%d")}.png")
-    else:  # Linux
-        os.system(f"xdg-open fund_data_{now.strftime("%Y-%m-%d")}.png")
-
-    print(f"✅ 图片生成完成（{total_data_rows}条数据）：fund_data.png")
+    # 跨平台打开图片 - 在launchd环境下跳过打开操作，只保存文件
+    print(f"✅ 图片生成完成（{total_data_rows}条数据）：{filename}")
 
 
 # 生成图片后执行（img_path为图片保存路径，如"fund_table.png"）

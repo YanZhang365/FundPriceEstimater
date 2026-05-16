@@ -1,7 +1,32 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 基金抓取主入口（仅负责参数解析、环境配置、信号注册）
 """
+import sys
+import os
+
+# 添加项目根目录到Python路径
+project_root = os.path.dirname(os.path.abspath(__file__))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+# 添加常用的site-packages路径，解决launchd环境下的模块导入问题
+common_paths = [
+    f"/usr/local/lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages",
+    f"/opt/homebrew/lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages",
+    f"/usr/lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages",
+    f"/Library/Frameworks/Python.framework/Versions/{sys.version_info.major}.{sys.version_info.minor}/lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages"
+]
+
+for path in common_paths:
+    if os.path.exists(path) and path not in sys.path:
+        sys.path.append(path)
+
+# 再次确认项目根目录在路径中
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 import argparse
 import signal
 import config  # 导入配置
@@ -49,15 +74,17 @@ if __name__ == "__main__":
         sh_data = market_data.get("上证指数", {})
         sz_data = market_data.get("深证成指", {})
         total_volume = (sh_data.get("volume", 0) or 0) + (sz_data.get("volume", 0) or 0)
-        # 将成交量转换为亿单位
-        total_volume_trillion = round(total_volume / 100000000, 2)
-        print(total_volume)
-        print(total_volume_trillion)
+        # 将成交量转换为万亿单位
+        total_volume_trillion = 0
+        if total_volume > 0:
+            total_volume_trillion = round(total_volume / 1000000000000, 2)
+        print(f"总成交量: {total_volume}")
+        print(f"总成交量(万亿): {total_volume_trillion}")
         # 构造传递给generate_fund_image的市场数据
         processed_market_data = {
             "volume": total_volume_trillion,
             "sh_current_price": sh_data.get("current_price"),
-            "sh_change_pct": str(sh_data.get("change_pct")) + '%' if sh_data.get("change_pct") is not None else "--"
+            "sh_change_pct": str(sh_data.get("change_pct", 0)) + '%' if sh_data.get("change_pct") is not None else "--"
         }
         push_content = utils.generate_fund_image(result, market_data=processed_market_data)
         send_image_to_wechat(f'fund_data_{now.strftime("%Y-%m-%d")}.png')
@@ -72,12 +99,14 @@ if __name__ == "__main__":
             sh_data = market_data.get("上证指数", {})
             sz_data = market_data.get("深证成指", {})
             total_volume = (sh_data.get("volume", 0) or 0) + (sz_data.get("volume", 0) or 0)
-            total_volume_trillion = round(total_volume / 100000000, 2)
+            total_volume_trillion = 0
+            if total_volume > 0:
+                total_volume_trillion = round(total_volume / 1000000000000, 2)
             # 构造传递给generate_fund_image的市场数据
             processed_market_data = {
                 "volume": total_volume_trillion,
                 "sh_current_price": sh_data.get("current_price"),
-                "sh_change_pct": sh_data.get("change_pct") + '%' if sh_data.get("change_pct") is not None else "--"
+                "sh_change_pct": str(sh_data.get("change_pct", 0)) + '%' if sh_data.get("change_pct") is not None else "--"
             }
             utils.generate_fund_image(result, market_data=processed_market_data)
             
