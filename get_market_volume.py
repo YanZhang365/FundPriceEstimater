@@ -75,8 +75,10 @@ def get_index_data(date=None):
         }
     
     indices = [
-        ("sh000001", "上证指数"),
-        ("sz399001", "深证成指")
+        # ("sh000001", "上证指数"),
+        # ("sz399001", "深证成指")
+        ("sh_total", "沪市总成交额"),
+        ("sz_total", "深市总成交额")
     ]
     
     results = {}
